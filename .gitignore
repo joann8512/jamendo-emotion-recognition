@@ -5,3 +5,4 @@ experiments/**/experiment.log
 experiments/**/metrics.csv
 experiments/**/*.pth.tar
 predictions/*.npy
+melspecs2
