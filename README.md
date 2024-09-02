@@ -1,6 +1,7 @@
 # jamendo-emotion-recognition
 ==============================
 
+> Please refer to [this repo](https://github.com/vibour/emotion-theme-recognition/tree/main) for the original code. This is just an implementation.
 The repository contains code for the submission of the lileonardo team to the [2021 Emotion and Theme Recognition in Music](https://multimediaeval.github.io/2021-Emotion-and-Theme-Recognition-in-Music-Task/) task of MediaEval 2021 ([results](https://multimediaeval.github.io/2021-Emotion-and-Theme-Recognition-in-Music-Task/results)).
 
 Requirements
