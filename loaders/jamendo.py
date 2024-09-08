@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from torch.utils.data.dataloader import DataLoader
 
-
 class AudioFolder(torch.utils.data.Dataset):
     """Audio dataset"""
     def __init__(self,
@@ -24,11 +23,11 @@ class AudioFolder(torch.utils.data.Dataset):
         self.get_dictionary(filename)
 
     def __getitem__(self, index):
-        filename = os.path.join(self.root, self.directory,
+        filename = os.path.join(self.directory,
                                 self.dictionary[index]['path'][:-3] + 'npy')
-                #os.path.join(self.directory,
+                   #os.path.join(self.root, self.directory,
                    #             self.dictionary[index]['path'][:-3] + 'npy')
-                    
+
         if self.input_length is None:
             audio = np.load(filename)
         else:
