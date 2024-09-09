@@ -40,9 +40,9 @@ def load_experiment(experiment_dir: str,
     Additional arguments are given to the Experiment class constructor."""
 
     parameters = ml.parameters.load_parameters_recursively(experiment_dir)
-    #if not os.path.exists(experiment_dir):
-    #    os.makedirs(experiment_dir, exist_ok=True)
-    os.makedirs(experiment_dir, exist_ok=True)
+    if not os.path.exists(experiment_dir):
+        os.makedirs(experiment_dir, exist_ok=True)
+    #os.makedirs(experiment_dir, exist_ok=True)
     
     if restart_training:
         restore_name = None

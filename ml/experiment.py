@@ -12,92 +12,7 @@ import librosa
 
 import ml
 import pdb
-
-TAG_MAP= {
-        "0": "action",
-        "1": "adventure",
-        "2": "advertising",
-        "3": "background",
-        "4": "ballad",
-        "5": "calm",
-        "6": "children",
-        "7": "christmas",
-        "8": "commercial",
-        "9": "cool",
-        "10": "corporate",
-        "11": "dark",
-        "12": "deep",
-        "13": "documentary",
-        "14": "drama",
-        "15": "dramatic",
-        "16": "dream",
-        "17": "emotional",
-        "18": "energetic",
-        "19": "epic",
-        "20": "fast",
-        "21": "film",
-        "22": "fun",
-        "23": "funny",
-        "24": "game",
-        "25": "groovy",
-        "26": "happy",
-        "27": "heavy",
-        "28": "holiday",
-        "29": "hopeful",
-        "30": "inspiring",
-        "31": "love",
-        "32": "meditative",
-        "33": "melancholic",
-        "34": "melodic",
-        "35": "motivational",
-        "36": "movie",
-        "37": "nature",
-        "38": "party",
-        "39": "positive",
-        "40": "powerful",
-        "41": "relaxing",
-        "42": "retro",
-        "43": "romantic",
-        "44": "sad",
-        "45": "sexy",
-        "46": "slow",
-        "47": "soft",
-        "48": "soundscape",
-        "49": "space",
-        "50": "sport",
-        "51": "summer",
-        "52": "trailer",
-        "53": "travel",
-        "54": "upbeat",
-        "55": "uplifting"
-    }
-
-def inference_process(file):
-    data, _ = torchaudio.load(file)
-    data = data.detach()
-    data = data.mean(0)
-    data, _ = librosa.effects.trim(data)
-    #output = data
-    data = data.to("cuda")
-    preprocessor = ml.loading.load_preprocessor({
-        "name": "melspectrogram",
-        "params": {
-            "sample_rate": 44100,
-            "n_fft": 2048,
-            "f_min": 0.0,
-            "f_max": 16000,
-            "n_mels": 128
-        }
-    }, "cuda")
-    melspec = preprocessor(data)
-
-    # from AudioFolder
-    memmap = melspec#[None,:]
-    length = memmap.shape[-1]
-    pos = np.random.random_sample()
-    idx = int(pos * (length - 224))
-    audio = memmap[:, idx:idx + 224]
-    return audio[None,:]  # 1, 128, 224
+from ml.inference_utils import *
 
 class Experiment():
     """An Experiment contains everything to train and evaluate a model
@@ -124,19 +39,20 @@ class Experiment():
         if splits is None:
             splits = self.params.get("dataloaders").keys()
 
-        #self.dls = ml.loading.load_dataloaders(data_dir, splits,
-        #                                       self.params.get("dataset"),
-        #                                       self.params.get("dataloaders"),
-        #                                       num_workers)
-        wave = inference_process(data_dir)
-        self.dls = [(wave, None)]
-        self.loss = ml.loading.load_loss(self.params.get("loss"),
-                                         device=self.device)  # weighted BCE w/ Logit Loss
+        if not os.path.isfile(data_dir):  # usually directory, only is file when inference
+            self.dls = ml.loading.load_dataloaders(data_dir, splits,
+                                                self.params.get("dataset"),
+                                                self.params.get("dataloaders"),
+                                                num_workers)
+        else:
+            wave = inference_process(data_dir)
+            self.dls = [(wave, None)]
+
+        self.loss = ml.loading.load_loss(self.params.get("loss"), device=self.device)  # weighted BCE w/ Logit Loss
         self.metrics = ml.loading.load_metrics(self.params.get("metrics"))  # PR-AUC, ROC-AUC
         self.eval_activation = ml.loading.load_eval_activation(self.params.get("evaluation_activation"))  # averaged sigmoid
         self.preprocessor = ml.loading.load_preprocessor(self.params.get("preprocessor"), self.device)
-        self.model = ml.loading.load_model(self.params.get("model"),
-                                           self.device)
+        self.model = ml.loading.load_model(self.params.get("model"), self.device)
         self.optimizer = ml.loading.load_optimizer(self.params.get("optimizer"), self.model.parameters())
         self.scheduler = ml.loading.load_scheduler(self.params.get("scheduler"), self.optimizer)
         self.scaler = torch.cuda.amp.GradScaler()
@@ -153,14 +69,13 @@ class Experiment():
             self.calculate_stats(save=True)
 
         logging.debug("Parameters: %s", self.params.show())
-        #self.save_parameters()
+        self.save_parameters()
 
         self.epoch = 0
         self.best_valid_metric = 0.0
 
         if restore_file is not None:
-            self.restore_checkpoint(restore_file,
-                                    restart_training=restart_training)
+            self.restore_checkpoint(restore_file, restart_training=restart_training)
 
     def init_swa(self) -> None:
         """Initialize self.swa (stochastic weight averaging)"""
@@ -280,24 +195,30 @@ class Experiment():
 
         logging.info("Evaluating %s", desc)
 
-        start_time = time.time()
-        eval_metrics, targets, outputs = ml.evaluation.evaluate(self, split, use_swa=use_swa)
+        if split != "inference":
+            start_time = time.time()
+            eval_metrics, targets, outputs = ml.evaluation.evaluate(
+                self, split, use_swa=use_swa)
 
-        #ml.logging.save_metrics(self.directory, desc, eval_metrics, epoch=None)
-        #ml.logging.log_metrics(start_time, eval_metrics)
+            ml.logging.save_metrics(self.directory, desc, eval_metrics, epoch=None)
+            ml.logging.log_metrics(start_time, eval_metrics)
 
-        if save_predictions:
-        #    self.save_predictions(desc, targets, outputs)
-            outputs = outputs[0].flatten().detach().cpu()
-            top_3_indices = np.argsort(outputs)[-3:]  # ascending
-            binarized = np.zeros_like(outputs)
-            binarized[top_3_indices] = 1
-            #outputs_path = os.path.join("test-outputs.npy")
-            #np.save(outputs_path, binarized)
-            out_tags = []
-            for i in np.flip(top_3_indices.numpy()):
-                out_tags.append(TAG_MAP[str(i)])
-        print(out_tags)
+            if save_predictions:
+                self.save_predictions(desc, targets, outputs)
+
+        else:
+            start_time = time.time()
+            eval_metrics, targets, outputs = ml.evaluation.evaluate(self, split, use_swa=use_swa)
+
+            if save_predictions:
+                outputs = outputs[0].flatten().detach().cpu()
+                top_3_indices = np.argsort(outputs)[-3:]  # ascending
+                binarized = np.zeros_like(outputs)
+                binarized[top_3_indices] = 1
+                out_tags = []
+                for i in np.flip(top_3_indices.numpy()):
+                    out_tags.append(TAG_MAP[str(i)])
+            print(out_tags)
 
     def save_predictions(self, desc: str, targets: np.ndarray,
                          outputs: np.ndarray):

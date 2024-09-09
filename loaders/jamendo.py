@@ -24,10 +24,8 @@ class AudioFolder(torch.utils.data.Dataset):
         self.get_dictionary(filename)
 
     def __getitem__(self, index):
-        filename = os.path.join(self.directory,
-                                self.dictionary[index]['path'][:-3] + 'npy')
-                   #os.path.join(self.root, self.directory,
-                   #             self.dictionary[index]['path'][:-3] + 'npy')
+        filename = os.path.join(self.directory, self.dictionary[index]['path'][:-3] + 'npy')
+                   #os.path.join(self.root, self.directory, self.dictionary[index]['path'][:-3] + 'npy')
 
         if self.input_length is None:
             audio = np.load(filename)

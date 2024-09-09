@@ -38,56 +38,56 @@ def evaluate(
 
     model.eval()
 
-    outs = []
-    #with tqdm(total=len(exp.dls[split]), desc="- " + split, ncols=100) as tqbar:
-    for data_batch, _ in exp.dls:
-        with torch.no_grad():
-            data_batch = data_batch.to(exp.device)
+    if split != "inference":
+        loss_avg = ml.utils.RunningAverage()
 
-            stats = exp.params.get("stats")      
-            if stats is not None:
-                data_batch = (data_batch - stats["mean"]) / stats["std"]
+        outs = []
+        targs = []
+
+        with tqdm(total=len(exp.dls[split]), desc="- " + split, ncols=100) as tqbar:
+            for data_batch, target_batch in exp.dls[split]:
+                with torch.no_grad():
+                    data_batch = data_batch.to(exp.device)
+                    target_batch = target_batch.to(exp.device)
+
+                    if exp.preprocessor is not None:
+                        data_batch = exp.preprocessor(data_batch)
+                    stats = exp.params.get("stats")
+                    if stats is not None:
+                        data_batch = (data_batch - stats["mean"]) / stats["std"]
+
+                    output_batch = model(data_batch)
+                    loss = exp.loss(output_batch.mean(-1), target_batch)
+
+                outs.append(output_batch.detach())
+                targs.append(target_batch.detach())
+
+                loss_avg.update(loss.item())
+                tqbar.set_postfix(loss=f"{loss_avg():.4g}")
+                tqbar.update()
+
+            eval_outputs, eval_targets = exp.eval_activation(outs, targs)
+
+            summary = {}
+            if calculate_metrics:
+                summary.update({
+                    met: exp.metrics[met](eval_targets, eval_outputs)
+                    for met in exp.metrics
+                })
+
+        return summary, eval_targets, eval_outputs
     
-    
-            output_batch = model(data_batch)
-        outs.append(output_batch.detach())
-    return _, _, outs
-    '''
-    loss_avg = ml.utils.RunningAverage()
-
-    outs = []
-    targs = []
-
-    with tqdm(total=len(exp.dls[split]), desc="- " + split, ncols=100) as tqbar:
-        for data_batch, target_batch in exp.dls[split]:
+    else:
+        outs = []
+        for data_batch, _ in exp.dls:
             with torch.no_grad():
                 data_batch = data_batch.to(exp.device)
-                target_batch = target_batch.to(exp.device)
 
-                if exp.preprocessor is not None:
-                    data_batch = exp.preprocessor(data_batch)
-                stats = exp.params.get("stats")
+                stats = exp.params.get("stats")      
                 if stats is not None:
                     data_batch = (data_batch - stats["mean"]) / stats["std"]
-
+        
                 output_batch = model(data_batch)
-                loss = exp.loss(output_batch.mean(-1), target_batch)
-
             outs.append(output_batch.detach())
-            targs.append(target_batch.detach())
-
-            loss_avg.update(loss.item())
-            tqbar.set_postfix(loss=f"{loss_avg():.4g}")
-            tqbar.update()
-
-        eval_outputs, eval_targets = exp.eval_activation(outs, targs)
-
-        summary = {}
-        if calculate_metrics:
-            summary.update({
-                met: exp.metrics[met](eval_targets, eval_outputs)
-                for met in exp.metrics
-            })
-
-    return summary, eval_targets, eval_outputs
-    '''
+        return _, _, outs
+        

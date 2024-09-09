@@ -1,14 +1,5 @@
-"""Main script to train and evaluate model
-
-Launches training and evaluation according to parameters contained in file
-parameters.json of given directory experiment_dir.
-
-Parameters contained in parent directories are loaded recursively. Parameters
-are overidden by command line arguments. Final parameters are written to
-experiment_dir/parameters.json"""
-
-import argparse
 import os
+import argparse
 
 import ml
 import pdb
@@ -55,15 +46,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     completed_file_path = os.path.join(args.experiment_dir, "completed")
-    if os.path.exists(completed_file_path):
-        print(f"Training {args.experiment_dir} already completed")
-        print(f"Delete {completed_file_path} to run again")
+    if not os.path.exists(completed_file_path):
+        print(f"Can't find completed model of {args.experiment_dir}")
 
     exp = ml.loading.load_experiment(**args.__dict__)
     exp.evaluate("inference",
                     restore_file_name="last",
                     use_swa=exp.params.get("swa") is not None,
                     save_predictions=True)
-
 
 # python inference.py --experiment_dir ./experiments/convs-m128-i224-wbce --data_dir ../emotion/audio/1.mp3
