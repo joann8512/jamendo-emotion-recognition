@@ -212,13 +212,14 @@ class Experiment():
 
             if save_predictions:
                 outputs = outputs[0].flatten().detach().cpu()
-                top_3_indices = np.argsort(outputs)[-3:]  # ascending
-                binarized = np.zeros_like(outputs)
-                binarized[top_3_indices] = 1
-                out_tags = []
-                for i in np.flip(top_3_indices.numpy()):
-                    out_tags.append(TAG_MAP[str(i)])
-            print(out_tags)
+                #top_3_indices = np.argsort(outputs)[-3:]  # ascending
+                #binarized = np.zeros_like(outputs)
+                #binarized[top_3_indices] = 1
+                #out_tags = []
+                #for i in np.flip(top_3_indices.numpy()):
+                #    out_tags.append(TAG_MAP[str(i)])
+            #print(out_tags)
+            return outputs
 
     def save_predictions(self, desc: str, targets: np.ndarray,
                          outputs: np.ndarray):

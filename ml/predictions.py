@@ -14,15 +14,16 @@ def average_predictions(output_paths: str,
     acc = np.zeros(1)
     weight = 1
     total = 0
-    for path in output_paths:
+    for path in output_paths:  # 6 models
         probas = np.load(path)
 
         if weight_metric is not None:
-            weight = weight_metric(targets, probas).mean()
+            pdb.set_trace()
+            weight = weight_metric(targets, probas).mean()  # 56*1 mean = 1
 
-        acc = acc + probas * weight
+        acc = acc + probas * weight  # 4231*56
         total += weight
-    return acc / total
+    return acc / total  # 4231*56
 
 
 def verify_targets(target_paths: Iterable[str]):
