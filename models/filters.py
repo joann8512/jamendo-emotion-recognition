@@ -4,6 +4,7 @@ from typing import Any, Dict
 import torch
 from torch import Tensor
 from torch.nn import Module
+import pdb
 
 from models.modules import FC, Collapse, Conv, Output, Filter
 
@@ -53,6 +54,7 @@ class Filters(Module):
         self.output = Output(1024, n_class, dropout=0.5)
 
     def forward(self, inp: Tensor) -> Tensor:
+        pdb.set_trace()
         out = inp.unsqueeze(1)
         out = self.conv1(out)
         out = self.conv2(out)

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 import ml.utils
 from ml.experiment import Experiment
-
+import pdb
 
 def evaluate(
     exp: Experiment,
@@ -38,13 +38,27 @@ def evaluate(
 
     model.eval()
 
+    outs = []
+    #with tqdm(total=len(exp.dls[split]), desc="- " + split, ncols=100) as tqbar:
+    for data_batch, _ in exp.dls:
+        with torch.no_grad():
+            data_batch = data_batch.to(exp.device)
+
+            stats = exp.params.get("stats")      
+            if stats is not None:
+                data_batch = (data_batch - stats["mean"]) / stats["std"]
+    
+    
+            output_batch = model(data_batch)
+        outs.append(output_batch.detach())
+    return _, _, outs
+    '''
     loss_avg = ml.utils.RunningAverage()
 
     outs = []
     targs = []
 
-    with tqdm(total=len(exp.dls[split]), desc="- " + split,
-              ncols=100) as tqbar:
+    with tqdm(total=len(exp.dls[split]), desc="- " + split, ncols=100) as tqbar:
         for data_batch, target_batch in exp.dls[split]:
             with torch.no_grad():
                 data_batch = data_batch.to(exp.device)
@@ -76,3 +90,4 @@ def evaluate(
             })
 
     return summary, eval_targets, eval_outputs
+    '''

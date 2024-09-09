@@ -14,6 +14,7 @@ import ml.losses
 import ml.metrics
 import ml.parameters
 from ml.experiment import Experiment
+import pdb
 
 
 def load_experiment(experiment_dir: str,
@@ -39,8 +40,10 @@ def load_experiment(experiment_dir: str,
     Additional arguments are given to the Experiment class constructor."""
 
     parameters = ml.parameters.load_parameters_recursively(experiment_dir)
+    #if not os.path.exists(experiment_dir):
+    #    os.makedirs(experiment_dir, exist_ok=True)
     os.makedirs(experiment_dir, exist_ok=True)
-
+    
     if restart_training:
         restore_name = None
         # Clean metrics from experiment dir
@@ -120,24 +123,21 @@ def load_scheduler(scheduler_params: Dict[str, Any],
     return scheduler
 
 
-def load_dataloaders(root, splits, dataset_params, dataloaders_params,
-                     num_workers):
+def load_dataloaders(root, splits, dataset_params, dataloaders_params, num_workers):
     """Load dict of dataloaders
 
     Uses function get_dataloader in module loaders.dataset_name"""
-    loader_module = importlib.import_module(
-        f"loaders.{dataset_params['name']}")
-    data_dir = os.path.join(root, dataset_params["name"])
+    loader_module = importlib.import_module(f"loaders.{dataset_params['name']}")  # loaders.jamendo 
+    data_dir = os.path.join(root, dataset_params["name"])  # data/jamendo
     get_dataloader = getattr(loader_module, "get_dataloader")
-    params_all = dataset_params["params"].get("all")
+    params_all = dataset_params["params"].get("all") # directory: melspecs2
     if params_all is None:
         params_all = {}
     dls = {}
     for split in splits:
         params = params_all.copy()
-        params.update(dataset_params["params"][split])
-        dls[split] = get_dataloader(data_dir, params,
-                                    dataloaders_params[split], num_workers)
+        params.update(dataset_params["params"][split])  # get trackfile of a split
+        dls[split] = get_dataloader(data_dir, params, dataloaders_params[split], num_workers)
     return dls
 
 
