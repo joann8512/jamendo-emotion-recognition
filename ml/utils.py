@@ -31,4 +31,4 @@ def define_manual_seed(seed: Optional[int]) -> None:
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
-        logging.info("Manual seed set to %s", seed)
+        #logging.info("Manual seed set to %s", seed)

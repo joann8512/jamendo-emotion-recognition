@@ -39,13 +39,16 @@ class Experiment():
         if splits is None:
             splits = self.params.get("dataloaders").keys()
 
-        if not os.path.isfile(data_dir):  # usually directory, only is file when inference
-            self.dls = ml.loading.load_dataloaders(data_dir, splits,
-                                                self.params.get("dataset"),
-                                                self.params.get("dataloaders"),
-                                                num_workers)
-        else:
-            wave = inference_process(data_dir)
+        if type(data_dir) == str:  # either dir or filepath
+            if not os.path.isfile(data_dir):  # usually directory, only is file when inference
+                self.dls = ml.loading.load_dataloaders(data_dir, splits,
+                                                    self.params.get("dataset"),
+                                                    self.params.get("dataloaders"),
+                                                    num_workers)
+            else:
+                wave = inference_process(data_dir)
+                self.dls = [(wave, None)]
+        else:  # if already loaded
             self.dls = [(wave, None)]
 
         self.loss = ml.loading.load_loss(self.params.get("loss"), device=self.device)  # weighted BCE w/ Logit Loss
@@ -68,7 +71,7 @@ class Experiment():
         if calculate_stats:
             self.calculate_stats(save=True)
 
-        logging.debug("Parameters: %s", self.params.show())
+        #logging.debug("Parameters: %s", self.params.show())
         self.save_parameters()
 
         self.epoch = 0
@@ -113,14 +116,14 @@ class Experiment():
         """Save current parameters in directory"""
         json_path = os.path.join(self.directory, "parameters.json")
         self.params.save(json_path)
-        logging.info("Parameters saved to %s", json_path)
+        #logging.info("Parameters saved to %s", json_path)
 
     def train(self,
               train_split: str,
               valid_split: Optional[str] = None) -> None:
         """Train model"""
-        logging.info("Starting training for %d epoch(s)",
-                     max(0, self.num_epochs - self.epoch))
+        #logging.info("Starting training for %d epoch(s)",
+        #             max(0, self.num_epochs - self.epoch))
 
         start_time = time.time()
         valid_metrics = None
@@ -129,28 +132,28 @@ class Experiment():
             self.epoch += 1
 
             learning_rate = self.optimizer.param_groups[0]["lr"]
-            logging.info("Epoch %d/%d: lr=%.1e", self.epoch, self.num_epochs,
-                         learning_rate)
+            #logging.info("Epoch %d/%d: lr=%.1e", self.epoch, self.num_epochs,
+            #             learning_rate)
 
-            logging.debug("- training")
+            #logging.debug("- training")
             train_metrics = ml.training.train_one_epoch(self, train_split)
-            ml.logging.save_metrics(self.directory, train_split, train_metrics,
-                                    self.epoch)
-            ml.logging.log_metrics(start_time, train_metrics)
+            #ml.logging.save_metrics(self.directory, train_split, train_metrics,
+            #                        self.epoch)
+            #ml.logging.log_metrics(start_time, train_metrics)
 
             if valid_split is not None:
                 logging.debug("- validation")
                 valid_metrics, _, _ = ml.evaluation.evaluate(self, valid_split)
 
-                ml.logging.save_metrics(self.directory, valid_split,
-                                        valid_metrics, self.epoch)
-                ml.logging.log_metrics(start_time, valid_metrics)
+                #ml.logging.save_metrics(self.directory, valid_split,
+                #                        valid_metrics, self.epoch)
+                #ml.logging.log_metrics(start_time, valid_metrics)
 
                 first_metric = ml.metrics.extract_first_metric(valid_metrics)
                 is_best = first_metric >= self.best_valid_metric
                 if is_best:
-                    logging.info("Found new best %s",
-                                 self.params.get("metrics")[0])
+                    #logging.info("Found new best %s",
+                    #             self.params.get("metrics")[0])
                     self.best_valid_metric = first_metric
             else:
                 valid_metrics = {}
@@ -169,10 +172,10 @@ class Experiment():
             self.save_checkpoint("last.pth.tar", valid_metrics)
             if is_best:
                 self.save_checkpoint("best.pth.tar", valid_metrics)
-                logging.debug("Best model saved to best.pth.tar")
+                #logging.debug("Best model saved to best.pth.tar")
 
         if self.swa.get("model") is not None and valid_metrics is not None:
-            logging.info("Updating batchnorm running stats for swa")
+            #logging.info("Updating batchnorm running stats for swa")
             ml.training.update_swa_bn(self, train_split)
             self.save_checkpoint("last.pth.tar", valid_metrics)
 
@@ -193,15 +196,15 @@ class Experiment():
         if use_swa:
             desc += "-swa"
 
-        logging.info("Evaluating %s", desc)
+        #logging.info("Evaluating %s", desc)
 
         if split != "inference":
             start_time = time.time()
             eval_metrics, targets, outputs = ml.evaluation.evaluate(
                 self, split, use_swa=use_swa)
 
-            ml.logging.save_metrics(self.directory, desc, eval_metrics, epoch=None)
-            ml.logging.log_metrics(start_time, eval_metrics)
+            #ml.logging.save_metrics(self.directory, desc, eval_metrics, epoch=None)
+            #ml.logging.log_metrics(start_time, eval_metrics)
 
             if save_predictions:
                 self.save_predictions(desc, targets, outputs)
@@ -212,13 +215,6 @@ class Experiment():
 
             if save_predictions:
                 outputs = outputs[0].flatten().detach().cpu()
-                #top_3_indices = np.argsort(outputs)[-3:]  # ascending
-                #binarized = np.zeros_like(outputs)
-                #binarized[top_3_indices] = 1
-                #out_tags = []
-                #for i in np.flip(top_3_indices.numpy()):
-                #    out_tags.append(TAG_MAP[str(i)])
-            #print(out_tags)
             return outputs
 
     def save_predictions(self, desc: str, targets: np.ndarray,
@@ -230,9 +226,9 @@ class Experiment():
         targets_path = os.path.join(predictions_dir, desc + "-targets.npy")
         outputs_path = os.path.join(predictions_dir, desc + "-outputs.npy")
         np.save(targets_path, targets)
-        logging.info("Targets saved to %s", targets_path)
+        #logging.info("Targets saved to %s", targets_path)
         np.save(outputs_path, outputs)
-        logging.info("Predictions saved to %s", outputs_path)
+        #logging.info("Predictions saved to %s", outputs_path)
 
     def save_checkpoint(self, filename: str, valid_metrics=None):
         """Save checkpoint to file. Optionally include validation metrics"""
@@ -274,16 +270,16 @@ class Experiment():
             scheduler=self.scheduler,
             swa_model=self.swa.get("model"),
             swa_scheduler=self.swa.get("scheduler"))
-        logging.info("Checkpoint restored from %s", restore_file)
+        #logging.info("Checkpoint restored from %s", restore_file)
         if not restart_training:
             self.best_valid_metric = best_valid_metric
             self.epoch = epoch
-            logging.info("Resuming at epoch %d", epoch)
+            #logging.info("Resuming at epoch %d", epoch)
 
     def calculate_stats(self, save: bool = True):
         """Calculate mean and std of input, optionally save them in params"""
         stats = ml.statistics.calculate_stats(self)
-        logging.info("Data statistics: %s", stats)
+        #logging.info("Data statistics: %s", stats)
         if save:
             self.params.set(stats, "stats")
             self.save_parameters()
