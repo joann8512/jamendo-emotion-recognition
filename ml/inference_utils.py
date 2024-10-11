@@ -24,8 +24,11 @@ TAG_MAP= {"0": "action", "1": "adventure", "2": "advertising", "3": "background"
 
 
 def inference_process(file):
-    data, sr = torchaudio.load(file)
-    data = data.detach().mean(0)  # to mono
+    if type(file) == str:
+        data, sr = torchaudio.load(file)
+        data = data.detach().mean(0)  # to mono, shape=torch.Size([length])
+    else:  ## if is waveform
+        data = file
     #data = torchaudio.transforms.Resample(sr, 44100, dtype=data.dtype)(data)
     data, _ = librosa.effects.trim(data)
     data = data.to("cuda")

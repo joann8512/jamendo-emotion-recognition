@@ -39,16 +39,13 @@ class Experiment():
         if splits is None:
             splits = self.params.get("dataloaders").keys()
 
-        if type(data_dir) == str:  # either dir or filepath
-            if not os.path.isfile(data_dir):  # usually directory, only is file when inference
-                self.dls = ml.loading.load_dataloaders(data_dir, splits,
-                                                    self.params.get("dataset"),
-                                                    self.params.get("dataloaders"),
-                                                    num_workers)
-            else:
-                wave = inference_process(data_dir)
-                self.dls = [(wave, None)]
-        else:  # if already loaded
+        if not os.path.isfile(data_dir):  # usually directory, only is file when inference
+            self.dls = ml.loading.load_dataloaders(data_dir, splits,
+                                                self.params.get("dataset"),
+                                                self.params.get("dataloaders"),
+                                                num_workers)
+        else:
+            wave = inference_process(data_dir)
             self.dls = [(wave, None)]
 
         self.loss = ml.loading.load_loss(self.params.get("loss"), device=self.device)  # weighted BCE w/ Logit Loss
